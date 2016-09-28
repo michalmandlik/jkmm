@@ -34,7 +34,7 @@ def delayDistribution(filename):
 				time = (end - start).total_seconds()
 				time = time / count
 				time = (53000000 - count) * time
-				print ("remain: " + str(time / 60) + " min")
+				print ("remain: " + str(int(time / 60)) + " min")
 	#sorting the result
 	delayList = delays.items()	
 	delayList = sorted(delayList, key=itemgetter(0))
