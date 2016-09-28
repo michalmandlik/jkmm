@@ -58,13 +58,13 @@ def delayDistribution(filename):
 	return (delayList)
 
 #carefull you must be
-filename = 'delays_dataset.csv'
-#filename = 'medium_dataset.csv'
-#filename = 'small_dataset.csv'
+#filename = 'data/delays_dataset.csv'
+#filename = 'data/100k_dataset.csv'
+filename = 'data/10_dataset.csv'
 result = delayDistribution(filename)
 
 #write result to a file
-filename = str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_distribution.txt"
+filename = "output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_distribution.txt"
 file = open(filename, 'w')
 i = 0
 while i < len(result) :
