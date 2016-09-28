@@ -12,25 +12,33 @@
 
 ### skripty
 ```
-support/benchmark.py
-```
-porovnava zpusoby prochazeni dat
-```
 support/delay_distribution.py
+support/pandas_distribution.py 
 ```
-vygeneruje v adresari output csv s rozlozenim zpozdeni
+vygeneruje v adresari output csv s rozlozenim zpozdeni, pomoci readline, nebo pandas
+
+**Pandas**
+time: 5105.373852 s
+lines: 52628832
+est 50mio: 97 min
+
+**Readline**
+time: 2298.222812 s
+lines: 52628832
+est 50mio: 43 min
+
 ```
 support/generate_data.py
 ```
 vygeneruje pomocna data
 ```
+support/benchmark.py
+```
+porovnava zpusoby prochazeni dat
+```
 support/max_min.py 
 ```
 hleda maximum a minimum zpozdeni
-```
-support/pandas_distribution.py 
-```
-vygeneruje sobor s rozlozenim zpozdeni pomoci pandas
 ```
 support/pandas_test.py
 ```

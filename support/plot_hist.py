@@ -2,7 +2,7 @@ import pandas as pd
 import time
 import matplotlib.pyplot as plt
 
-filename = "data/delay_distribution.csv"
+filename = "../output/160928_204615_distribution.txt"
 data = pd.read_csv(filename, index_col=0)
 
 data.plot()
@@ -13,6 +13,6 @@ plt.xlabel('Delay')
 plt.ylabel('Count')
 plt.title('Delay distribution')
 
-filename = "output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_plot.png"
+filename = "../output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_plot.png"
 plt.savefig(filename)
 plt.show()

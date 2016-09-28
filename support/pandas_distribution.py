@@ -58,10 +58,11 @@ filename = '../data/1mio_dataset.csv'
 result = delayDistribution(filename)
 
 #write result to a file
-filename = "../output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_distribution.txt"
+filename = "../output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_distribution.csv"
 file = open(filename, 'w')
 i = 0
 while i < len(result) :
 	file.write (str(result[i][0]) + "," + str(result[i][1]) + "\n")
 	i += 1
 file.close()
+print ("result writen to " + str(filename))
