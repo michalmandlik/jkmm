@@ -1,3 +1,5 @@
+import numpy as np
+
 #testing of dictionary {string : list}
 vertDict = {"a":[5,6,7]}
 vertDict["z"] = [5,6,7]
@@ -63,12 +65,28 @@ for sublist in nodeList :
 #sublist test
 i = 0	
 while i < len(vertList) :
-	print (str(vertList[i][0]) + "," + str(vertList[i][1]) + ",", end="")
+	#print (str(vertList[i][0]) + "," + str(vertList[i][1]) + ",", end="")
 	n = 0
 	sublist = vertList[i][2]
 	while n < len(sublist) :
-		print (str(sublist[n]) + ",", end="")
+		#print (str(sublist[n]) + ",", end="")
 		n += 1
-	print("")
+	#print("")
 	i += 1
 
+#tripple array
+nodeList = [[], [], []]
+nodeList[0] = ["carrier","carrier","dep_apt","arr_apt"]
+nodeList[1] = ["NK","MX","HKG","PRG"]
+nodeList[2] = [[0,1,2,3], [4,5,6], [7,8,9,10], [11,12]]
+
+search = "HKG"
+n = nodeList[1].index(search)
+
+i = 0
+while i < 3:
+	print(str(nodeList[i][n]), end="")
+	if i < 2:
+		print(", ", end="")
+	i += 1
+print ("\n")

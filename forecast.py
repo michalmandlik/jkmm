@@ -27,11 +27,33 @@ def printProgress(start, count):
 	return 0
 	
 def infoMsg(message):
+	'''function writes formated message'''
 	t = datetime.datetime.now()
 	print(t.strftime("%H:%M:%S") + " " + message)
 	return 0
-
-def writeResult(vertList):
+	
+def printVert(vertList):
+	'''supportingfunction write
+	structured vertList'''
+	if len(vertList[0]) == 0:
+		return 0
+	i = 0
+	while i < len(vertList[0]):
+		print(str(vertList[0][i]) + ", " + str(vertList[1][i]), end="")
+		sublist = vertList[2][i]
+		max = 10
+		if len(sublist) < 10:
+			max = len(sublist)
+		n = 0
+		while n < max:
+			print(", " + str(sublist[n]), end="")
+			n += 1
+		print("")
+		i += 1
+	print("=============================")
+	return 0
+		
+def writeVert(vertList):
 	'''function writes resulting
 	vertList to the file'''
 	filename = "output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_vertList.csv"
@@ -40,10 +62,10 @@ def writeResult(vertList):
 	#write first line
 	file.write ("type,id,vert_list\n")
 	i = 0
-	while i < len(vertList):
-		file.write (str(vertList[i][0]) + "," + str(vertList[i][1]))
+	while i < len(vertList[0]):
+		file.write (str(vertList[0][i]) + "," + str(vertList[1][i]))
 		n = 0
-		sublist = vertList[i][2]
+		sublist = vertList[2][i]
 		while n < len(sublist):
 			file.write ("," + str(sublist[n]))
 			n += 1
@@ -61,12 +83,10 @@ def learn(filename):
 	which contains delays'''	
 	#open file, initialize time counter
 	start = datetime.datetime.now()
-	file = open(filename, 'r')
+	file = open(filename, "r")
 	infoMsg("LEARNING from file: " + filename)
 	#inicialize the structure
-	vertList = [] #vert["type", "id", [delay_list]]
-	nodeList = [] #node[{"id","id"}, [delay_list]]
-	#step for distribution in minutes
+	vertList = [[], [], []] #[[type_list], [id_list], [[delay_list]]]
 	count = 0
 	line = ""
 	elem = []
@@ -77,22 +97,21 @@ def learn(filename):
 		line = file.readline()
 		elem = line.split(",")
 		test = elem[0]
-	#processing the file
-	while(line != ''):
-		#calculate delay in minutes
+	#filling the structure
+	while(line != ""):
 		delay = calcDelay(str(elem[5])[:-1], str(elem[6])[:-1])
-		#filling the structure
 		n = 0
+		#TODO skip 5 and take 6
 		while n < 5:
 			search = str(elem[n])
-			result = -1
-			for sublist in vertList:
-				if sublist[1] == search:
-					result = (vertList.index(sublist))
-					vertList[result][2].append(delay)
-					break
-			if result == -1:
-				vertList.append([str(elements[n]), str(elem[n]), [delay]])
+			print(search)
+			if search in vertList[1]:
+				result = (vertList[1].index(search))
+				vertList[2][result].append(delay)
+			else:
+				vertList[0].append(str(elements[n]))
+				vertList[1].append(str(elem[n]))
+				vertList[2].append([delay])
 			n += 1
 		#next line
 		line = file.readline()
@@ -103,8 +122,8 @@ def learn(filename):
 			printProgress(start, count)
 	file.close()
 	#sort vertList
-	infoMsg("SORTING vertList")
-	vertList.sort(key = lambda row: row[0])
+	#infoMsg("SORTING vertList")
+	#vertList.sort(key = lambda row: row[0])
 
 	#print performance
 	#end = datetime.datetime.now()
@@ -128,8 +147,9 @@ filename = 'data/10_dataset.csv'
 
 #MAIN function
 vertList = learn(filename)
+
 #save the result
-writeResult(vertList)
+writeVert(vertList)
 #write info, that job has been finished
 infoMsg("DONE")
 
