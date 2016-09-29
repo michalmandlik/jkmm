@@ -1,5 +1,6 @@
 import datetime
 import time
+import os
 
 def learn(filename):
 	'''function creates structure
@@ -10,6 +11,8 @@ def learn(filename):
 	#open file, initialize time counter
 	#start = datetime.datetime.now()
 	file = open(filename, 'r')
+	t = datetime.datetime.now()
+	print(t.strftime("%H:%M:%S") + " LEARNING from file: " + filename)
 	#inicialize the structure
 	vertList = [] #vert[id, "x", [1,2,3]]
 	nodeList = [] #node[("x","y"), [1,2,3]]
@@ -57,11 +60,11 @@ def learn(filename):
 			time = (53000000 - count) * time
 			print ("remain: " + str(time / 60) + " min")
 	file.close()
-	#sort and print vertList
+	t = datetime.datetime.now()
+	print(t.strftime("%H:%M:%S") + " SORTING vertList")
+	#sort vertList
 	vertList.sort(key = lambda row: row[0])
-	for item in vertList:
-		print (item[0], ', '.join(map(str, item[1:])))
-	
+
 	#print performance
 	#end = datetime.datetime.now()
 	#time = (end - start).total_seconds()
@@ -69,11 +72,38 @@ def learn(filename):
 	#print ("lines: " + str(count))
 	#print ("est 50mio: " + str(int((60000000 * time / count)/60)) + " min")
 	#if everything is ok return list of verticies and nodes
-	return (0)
+	return (vertList)
 
 #carefull you must be
 #filename = 'data/delays_dataset.csv'
+#filename = 'data/1mio_dataset.csv'
 #filename = 'data/100k_dataset.csv'
-filename = 'data/10_dataset.csv'
+#filename = 'data/10k_dataset.csv'
+#filename = 'data/100_dataset.csv'
+#filename = 'data/10_dataset.csv'
 
-learn(filename)
+vertList = learn(filename)
+
+#write vertList to a file
+filename = "output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_vertList.csv"
+file = open(filename, 'w')
+t = datetime.datetime.now()
+print(t.strftime("%H:%M:%S") + " WRITING vertList to file: " + filename)
+file.write ("type,id,vert_list\n")
+i = 0
+while i < len(vertList) :
+	file.write (str(vertList[i][0]) + "," + str(vertList[i][1]))
+	n = 0
+	sublist = vertList[i][2]
+	while n < len(sublist) :
+		file.write ("," + str(sublist[n]))
+		n += 1
+	file.write ("\n")
+	i += 1
+file.close()
+t = datetime.datetime.now()
+statinfo = os.stat(filename)
+print(t.strftime("%H:%M:%S") + " SIZE of vertList is: " + str(statinfo.st_size/1000000) + " MB")
+t = datetime.datetime.now()
+print(t.strftime("%H:%M:%S") + " DONE ")
+
