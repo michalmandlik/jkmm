@@ -1,4 +1,5 @@
 import numpy as np
+import timeit
 
 #testing of dictionary {string : list}
 vertDict = {"a":[5,6,7]}
@@ -80,13 +81,20 @@ nodeList[0] = ["carrier","carrier","dep_apt","arr_apt"]
 nodeList[1] = ["NK","MX","HKG","PRG"]
 nodeList[2] = [[0,1,2,3], [4,5,6], [7,8,9,10], [11,12]]
 
-search = "HKG"
-n = nodeList[1].index(search)
+n = ""
+search = "HKGx"
+try:
+	n = nodeList[1].index(search)
+except:
+	n = -1
+print (n)
 
-i = 0
-while i < 3:
-	print(str(nodeList[i][n]), end="")
-	if i < 2:
-		print(", ", end="")
-	i += 1
-print ("\n")
+#i = 0
+#while i < 3:
+	#print(str(nodeList[i][n]), end="")
+	#if i < 2:
+		#print(", ", end="")
+	#i += 1
+#print ("\n")
+
+

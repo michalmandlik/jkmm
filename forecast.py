@@ -98,17 +98,20 @@ def learn(filename):
 		elem = line.split(",")
 		test = elem[0]
 	#filling the structure
+	#
 	while(line != ""):
 		delay = calcDelay(str(elem[5])[:-1], str(elem[6])[:-1])
 		n = 0
 		#TODO skip 5 and take 6
+		#TODO v ID musi byt jeden znak navic, jako jednoznacny identifikator
 		while n < 5:
 			search = str(elem[n])
-			print(search)
-			if search in vertList[1]:
+			try:
+				#add only delay to existing line
 				result = (vertList[1].index(search))
 				vertList[2][result].append(delay)
-			else:
+			except:
+				#add ne line to structure
 				vertList[0].append(str(elements[n]))
 				vertList[1].append(str(elem[n]))
 				vertList[2].append([delay])
