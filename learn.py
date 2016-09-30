@@ -2,8 +2,9 @@ import datetime
 import time
 import os
 import sys
+from pprint import pprint
 
-def calcDelay(sch_dep, act_dep):
+def calcDelay (sch_dep, act_dep):
 	'''function returs dealy in minutes
 	calculated from two input strings
 	formated YYYY-MM-DD HH:MM:SS'''
@@ -16,13 +17,13 @@ def calcDelay(sch_dep, act_dep):
 	else :
 		return (delay)
 	
-def infoMsg(message):
+def infoMsg (message):
 	'''function writes formated message'''
 	t = datetime.datetime.now()
 	print(t.strftime("%H:%M:%S") + " " + message)
 	return 0
 	
-def printNode(nodeList):
+def printList (nodeList):
 	'''supportingfunction write
 	structured nodeList'''
 	if len(nodeList) == 0:
@@ -33,7 +34,7 @@ def printNode(nodeList):
 	print("=============================")
 	return 0
 		
-def writeNode(nodeList):
+def writeNode (nodeList):
 	'''function writes resulting
 	nodeList to the file'''
 	filename = "output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_nodeList.csv"
@@ -51,7 +52,25 @@ def writeNode(nodeList):
 	infoMsg("SIZE of nodeList is: " + str(statinfo.st_size/1000000) + " MB")
 	return 0
 	
-def adjElements(elements):
+def writeVert (vertList):
+	'''function writes resulting
+	nodeList to the file'''
+	filename = "output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_vertList.csv"
+	file = open(filename, 'w')
+	infoMsg("WRITING vertList to file: " + filename)
+	#write first line
+	file.write ("id,id,delay,count,delay,count,delay,count,...\n")
+	for i in range(len(vertList[0])):
+		file.write (str(vertList[0][i][0]) + "," + str(vertList[0][i][1]))
+		for key in vertList[1][i]:
+			file.write ("," + str(key) + "," + str(vertList[1][i][key]))
+		file.write ("\n")
+	file.close()
+	statinfo = os.stat(filename)
+	infoMsg("SIZE of vertList is: " + str(statinfo.st_size/1000000) + " MB")
+	return 0
+	
+def adjElements (elements):
 	'''adjust elements, remove redundant
 	sch_date, split sch_dep to days and hours
 	add unique identificator
@@ -70,30 +89,30 @@ def adjElements(elements):
 	elements[5] = ":" + str(t[3]) #hour
 	return (elements)
 
-def transformNode(nodeRaw):
+def transformRaw(rawList):
 	''' function reduces the size
 	of nodeRaw and returns nodeList
 	consisting of list of unique ids
-	and coresponding list of lists of delays'''
-	nodeList = [[], []]
-	nodeRaw.sort(key = lambda row: row[0])
-	index = nodeRaw[0][0]
+	and coresponding list of dicts of delays'''
+	list = [[], []]
+	rawList.sort(key = lambda row: row[0])
+	index = rawList[0][0]
 	delays = []
-	for i in range(len(nodeRaw)):
+	for i in range(len(rawList)):
 		#collect delays
-		if index == nodeRaw[i][0]:
-			delays.append(nodeRaw[i][1])
-		#append to nodeList and continue with next id
+		if index == rawList[i][0]:
+			delays.append(rawList[i][1])
+		#append to list and continue with next id
 		else:
-			nodeList[0].append(index)
-			nodeList[1].append(listToDict(delays))
-			index = nodeRaw[i][0]
-			delays = [nodeRaw[i][1]]		
+			list[0].append(index)
+			list[1].append(listToDict(delays))
+			index = rawList[i][0]
+			delays = [rawList[i][1]]		
 		#append last data
-		if i == (len(nodeRaw) - 1):
-			nodeList[0].append(index)
-			nodeList[1].append(listToDict(delays))
-	return (nodeList)
+		if i == (len(rawList) - 1):
+			list[0].append(index)
+			list[1].append(listToDict(delays))
+	return (list)
 	
 def listToDict (listx):
 	'''connode list to dictionary,
@@ -127,34 +146,34 @@ def mergeDict (dictA, dictB):
 			dictA[key] = dictB[key]
 	return (dictA)
 	
-def mergeNode (nodeA, nodeB):
+def mergeList (listA, listB):
 	'''function merges two sorted
 	nodelists, it returns merged
 	and sorted nodelist'''
-	if len(nodeA) == 0:
-		return (nodeB)
+	if len(listA) == 0:
+		return (listB)
 	a = 0
-	for b in range(len(nodeB[0])):
+	for b in range(len(listB[0])):
 		while 1:
-			#end of nodeA
-			if nodeB[0][b] > nodeA[0][-1]:
-				nodeA[0].append(nodeB[0][b])
-				nodeA[1].append(nodeB[1][b])
+			#end of listA
+			if listB[0][b] > listA[0][-1]:
+				listA[0].append(listB[0][b])
+				listA[1].append(listB[1][b])
 				a += 1
 				break
 			#merge elements
-			if nodeB[0][b] == nodeA[0][a]:
-				mergeDict(nodeA[1][a], nodeB[1][b])
+			if listB[0][b] == listA[0][a]:
+				mergeDict(listA[1][a], listB[1][b])
 				a += 1
 				break
 			#insert new element
-			if nodeB[0][b] < nodeA[0][a]:
-				nodeA[0].insert(a, nodeB[0][b])
-				nodeA[1].insert(a, nodeB[1][b])
+			if listB[0][b] < listA[0][a]:
+				listA[0].insert(a, listB[0][b])
+				listA[1].insert(a, listB[1][b])
 				a += 1
 				break
 			a +=1
-	return (nodeA)
+	return (listA)
 	
 def learn(filename):
 	'''function creates structure
@@ -168,8 +187,10 @@ def learn(filename):
 	file = open(filename, "r")
 	infoMsg("LEARNING from file: " + filename)
 	#inicialize the structure
-	nodeRaw = [] #[[id, delay], ...]
+	nodeRaw = [] #[[id, delay]]
+	vertRaw = [] #[[(idA, idB), delay] 
 	nodeList = []
+	vertList = []
 	elements = []
 	count = 0
 	line = ""
@@ -182,39 +203,66 @@ def learn(filename):
 	#filling the structure
 	while(line != ""):
 		elements = adjElements(elements)
+		#nodeRaw
 		for n in range(6):
 			nodeRaw.append([elements[n], elements[6]])
+		#vertRaw
+		for n in range(5):
+			for m in range(4-n):
+				vertRaw.append([(elements[n], elements[5-m]),elements[6]])
 		#next line
 		line = file.readline()
 		elements = line.split(",")
 		count += 1
-		#clean nodeRaw every 2E% cycles
+		#clean nodeRaw every 2E5 cycles
 		if (count % 2E5) == 0:
-			nodeX = transformNode(nodeRaw)
-			nodeList = mergeNode(nodeList, nodeX)
+			nodeX = transformRaw(nodeRaw)
+			nodeList = mergeList(nodeList, nodeX)
 			nodeRaw = []
-		#print info about progress every ~1 minute
+		#clean vertRaw every 1E5 cycles
+		if (count % 1E5) == 0:
+			vertX = transformRaw(vertRaw)
+			vertList = mergeList(vertList, vertX)
+			vertRaw = []
+		#print info about progress every ~1 minute TODO count
 		if (count % 2E5) == 0:
 			prog = 100 * count / total
 			end = datetime.datetime.now()
 			time = (end - start).total_seconds()
 			#MEM nodeList
-			size = sys.getsizeof(nodeList[0])
+			sizeN = sys.getsizeof(nodeList[0])
 			for i in range(len(nodeList[0])):
-				size += sys.getsizeof(nodeList[1][i])
-			infoMsg(str(int(prog)) + "% done, " + str(int(time / 60 * 100 / prog)) + " min remains, MEM nodeList " + str(int(size/1E6)) + " MB")
+				sizeN += sys.getsizeof(nodeList[1][i])
+			#MEM vertRaw
+			sizeV = 0
+			for i in range(len(vertList[0])):
+				sizeV += sys.getsizeof(vertList[0][i])
+				sizeV += sys.getsizeof(vertList[1][i])
+			infoMsg(str(int(prog)) + "% done, " + str(int(time / 60 * 100 / prog)) + " min remains, MEM nodeList " + str(int(sizeN/1E6)) + " MB, MEM vertRaw " + str(int(sizeV/1E6)) + " MB")
 	file.close()
 	#final clean of nodeRaw
-	nodeX = transformNode(nodeRaw)
-	nodeList = mergeNode(nodeList, nodeX)
+	if (count % 2E5) != 0:
+		nodeX = transformRaw(nodeRaw)
+		nodeList = mergeList(nodeList, nodeX)
+		nodeRaw=[]
+	#final clean of vertRaw
+	if (count % 1E5) != 0:
+		vertX = transformRaw(vertRaw)
+		vertList = mergeList(vertList, vertX)
+		vertRaw = []
 	end = datetime.datetime.now()
 	time = (end - start).total_seconds()
 	#MEM nodeList
-	size = sys.getsizeof(nodeList[0])
+	sizeN = sys.getsizeof(nodeList[0])
 	for i in range(len(nodeList[0])):
-		size += sys.getsizeof(nodeList[1][i])
-	infoMsg("PROCESSED " + str(count) + " lines in " + str(int(time / 60)) + " min, MEM nodeList " + str(int(size / 1E6)) + " MB")
-	return(nodeList)
+		sizeN += sys.getsizeof(nodeList[1][i])
+	#MEM vertRaw
+	sizeV = 0
+	for i in range(len(vertList[0])):
+		sizeV += sys.getsizeof(vertList[0][i])
+		sizeV += sys.getsizeof(vertList[1][i])
+	infoMsg("PROCESSED " + str(count) + " lines in " + str(int(time / 60)) + " min, MEM nodeList " + str(int(sizeN / 1E6)) + " MB, MEM vertList " + str(int(sizeV / 1E6)) + " MB")
+	return(nodeList, vertList)
 
 ########################################################################
 
@@ -229,10 +277,11 @@ filename = 'data/1mio_dataset.csv'
 #filename = 'data/10_dataset.csv'
 
 #MAIN function
-nodeList = learn(filename)
+nodeList, vertList = learn(filename)
 
 #save the result
 writeNode(nodeList)
+writeVert(vertList)
 
 #write info, that job has been finished
 infoMsg("DONE Be happy :-)")
