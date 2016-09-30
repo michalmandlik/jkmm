@@ -33,7 +33,7 @@ def infoMsg(message):
 	return 0
 	
 def printVert(vertList):
-	'''supportingfunction write
+	'''supporting function, writes
 	structured vertList'''
 	if len(vertList[0]) == 0:
 		return 0
@@ -52,7 +52,26 @@ def printVert(vertList):
 		i += 1
 	print("=============================")
 	return 0
-		
+	
+def adjElements(elements):
+	'''adjust elements, remove redundant
+	sch_date, split sch_dep to days and hours
+	add unique identificator
+	original
+	["CX", "615", "LAX", "PRG", "2016-05-04", "2016-05...", "2016-05..."]
+	example result
+	[carrier, fltno, dep_apt, arr_apt, delay]
+	["~CX", "!615", "@LAX", "#PRG", "$7", "+14", "5"]'''
+	t = time.strptime(str(elements[5]), "%Y-%m-%d %H:%M:%S" )
+	elements[6] = calcDelay(str(elements[5])[:-1], str(elements[6])[:-1])
+	elements[3] = "#" + str(elements[3])
+	elements[2] = "@" + str(elements[2])
+	elements[1] = "!" + str(elements[1])
+	elements[0] = "~" + str(elements[0])
+	elements[5] = t[3] #hour
+	elements[4] = t[6] #weekday
+	return (elements)	
+	
 def writeVert(vertList):
 	'''function writes resulting
 	vertList to the file'''
@@ -89,36 +108,34 @@ def learn(filename):
 	vertList = [[], [], []] #[[type_list], [id_list], [[delay_list]]]
 	count = 0
 	line = ""
-	elem = []
-	elements = ["car", "flt", "dep", "arr", "sch"]
+	elements = []
 	test = "carrier"
 	#skipping first line of the file
 	while test == "carrier":	
 		line = file.readline()
-		elem = line.split(",")
-		test = elem[0]
+		elements = line.split(",")
+		test = elements[0]
 	#filling the structure
-	#
 	while(line != ""):
-		delay = calcDelay(str(elem[5])[:-1], str(elem[6])[:-1])
+		elements = adjElements(elements)
+		print(elements)
 		n = 0
-		#TODO skip 5 and take 6
-		#TODO v ID musi byt jeden znak navic, jako jednoznacny identifikator
-		while n < 5:
-			search = str(elem[n])
-			try:
-				#add only delay to existing line
-				result = (vertList[1].index(search))
-				vertList[2][result].append(delay)
-			except:
-				#add ne line to structure
-				vertList[0].append(str(elements[n]))
-				vertList[1].append(str(elem[n]))
-				vertList[2].append([delay])
-			n += 1
+		#while n < 5:
+			#search = str(elem[n])
+			#try:
+				##add only delay to existing line
+				#result = (vertList[1].index(search))
+				#vertList[2][result].append(delay)
+			#except:
+				##add ne line to structure
+				#vertList[0].append(str(elements[n]))
+				#vertList[1].append(str(elem[n]))
+				#vertList[2].append([delay])
+			#n += 1
 		#next line
 		line = file.readline()
-		elem = line.split(",")
+		elements = line.split(",")
+		
 		count += 1
 		#print info about progress
 		if (count % 1E6) == 0:
@@ -152,7 +169,7 @@ filename = 'data/10_dataset.csv'
 vertList = learn(filename)
 
 #save the result
-writeVert(vertList)
+#writeVert(vertList)
 #write info, that job has been finished
 infoMsg("DONE")
 
