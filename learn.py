@@ -59,12 +59,12 @@ def writeVert (vertList):
 	file = open(filename, 'w')
 	infoMsg("WRITING vertList to file: " + filename)
 	#write first line
-	file.write ("id,id,delay,count,delay,count,delay,count,...\n")
+	file.write("id,id,delay,count,delay,count,delay,count,...\n")
 	for i in range(len(vertList[0])):
-		file.write (str(vertList[0][i][0]) + "," + str(vertList[0][i][1]))
+		file.write(str(vertList[0][i][0]) + "," + str(vertList[0][i][1]))
 		for key in vertList[1][i]:
-			file.write ("," + str(key) + "," + str(vertList[1][i][key]))
-		file.write ("\n")
+			file.write("," + str(key) + "," + str(vertList[1][i][key]))
+		file.write("\n")
 	file.close()
 	statinfo = os.stat(filename)
 	infoMsg("SIZE of vertList is: " + str(statinfo.st_size/1000000) + " MB")
@@ -81,13 +81,14 @@ def adjElements (elements):
 	["~CX", "!615", "@LAX", "#PRG", "$7", "+14", "5"]'''
      # because of ascii
 	t = time.strptime(str(elements[5]), "%Y-%m-%d %H:%M:%S" )
-	elements[6] = calcDelay(str(elements[5])[:-1], str(elements[6])[:-1]) #delay
+	elements.append(calcDelay(str(elements[5])[:-1], str(elements[6])[:-1])) #delay
 	elements[0] = "!" + str(elements[0]) #carrier
 	elements[1] = "#" + str(elements[1]) #fltno
 	elements[2] = "$" + str(elements[2]) #dep_apt
 	elements[3] = "&" + str(elements[3]) #arr_apt	
 	elements[4] = "+" + str(t[6]) #weekday
-	elements[5] = ":" + str(t[3]) #hour
+	elements[5] = ":" + str(int(t[3]/6)) #hour groups 0:0-6 1:6-12 2:12-18 3:18-24 
+	elements[6] = ">" + str(t[1]) #month
 	return (elements)
 
 def transformRaw(rawList):
@@ -204,19 +205,20 @@ def learn(filename):
 	#filling the structure
 	while(line != ""):
 		elements = adjElements(elements)
+		l = len(elements)
 		#nodeRaw
-		for n in range(6):
-			nodeRaw.append([elements[n], elements[6]])
+		for n in range(l-1):
+			nodeRaw.append([elements[n], elements[-1]])
 #		#vertRaw
-#		for n in range(5):
-#			for m in range(4-n):
-#				vertRaw.append([(elements[n], elements[5-m]),elements[6]])
+#		for n in range(l-2):
+#			for m in range(l-2-n):
+#				vertRaw.append([(elements[n], elements[l-2-m]),elements[-1]])
 		#next line
 		line = file.readline()
 		elements = line.split(",") # more elements
 		count += 1
 		#clean nodeRaw every 2E5 cycles
-		if (count % 2E5) == 0:
+		if (count % int(2E5)) == 0:
 			nodeX = transformRaw(nodeRaw)
 			nodeList = mergeList(nodeList, nodeX)
 			nodeRaw = []
@@ -226,7 +228,7 @@ def learn(filename):
 #			vertList = mergeList(vertList, vertX)
 #			vertRaw = []
 		#print info about progress every ~1 minute TODO count
-		if (count % 2E5) == 0:
+		if (count % int(2E5)) == 0:
 			prog = 100 * count / total
 			end = datetime.datetime.now()
 			time = (end - start).total_seconds()
@@ -242,7 +244,7 @@ def learn(filename):
 			infoMsg(str(int(prog)) + "% done, " + str(int(time / 60 * 100 / prog)) + " min remains, MEM nodeList " + str(int(sizeN/1E6)) + " MB, MEM vertRaw " + str(int(sizeV/1E6)) + " MB")
 	file.close()
 	#final clean of nodeRaw
-	if (count % 2E5) != 0:
+	if (count % int(2E5)) != 0:
 		nodeX = transformRaw(nodeRaw)
 		nodeList = mergeList(nodeList, nodeX)
 		nodeRaw=[]
