@@ -12,38 +12,25 @@
 
 ### skripty
 ```
-support/delay_distribution.py
-support/pandas_distribution.py 
+learn.py
 ```
-vygeneruje v adresari output csv s rozlozenim zpozdeni, pomoci readline, nebo pandas
-
-**Pandas**
-time: 5105.373852 s
-lines: 52628832
-est 50mio: 97 min
-
-**Readline**
-time: 2298.222812 s
-lines: 52628832
-est 50mio: 43 min
-
+Nacte soubor delays_dataset.csv a vygeneruje soubory vertList.csv
+a nodeList.csv v adresari output.
+```
+generate_adv.py
+```
+Nacte soubor delays_dataset.csv a rozdeli ho na 52 sad souboru.
+learn.csv - 1mio radku ucicich dat
+test.csv - 1k radku testovacich dat bez actual_departure
+control.csv - stejne jako test.csv, ale s doplnenymi hodnotami
 ```
 support/generate_data.py
 ```
 vygeneruje pomocna data
-```
-support/benchmark.py
-```
-porovnava zpusoby prochazeni dat
+
 ```
 support/max_min.py 
 ```
 hleda maximum a minimum zpozdeni
-```
-support/pandas_test.py
-```
-pokusny skript na prochazeni pomoci pandas a chunk
-```
-support/plot_hist.py 
-```
-vygeneruje graf z data/delay_distribution.csv
+
+
