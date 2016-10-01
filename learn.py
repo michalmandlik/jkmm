@@ -79,6 +79,7 @@ def adjElements (elements):
 	example result
 	[carrier, fltno, dep_apt, arr_apt, delay]
 	["~CX", "!615", "@LAX", "#PRG", "$7", "+14", "5"]'''
+     # because of ascii
 	t = time.strptime(str(elements[5]), "%Y-%m-%d %H:%M:%S" )
 	elements[6] = calcDelay(str(elements[5])[:-1], str(elements[6])[:-1]) #delay
 	elements[0] = "!" + str(elements[0]) #carrier
@@ -183,17 +184,17 @@ def learn(filename):
 	#open file, initialize time counter
 	start = datetime.datetime.now()
 	#estimation of total lines in dataset
-	total = int(os.stat(filename).st_size / 56)
+	total = int(os.stat(filename).st_size / 56) # num lines
 	file = open(filename, "r")
 	infoMsg("LEARNING from file: " + filename)
 	#inicialize the structure
-	nodeRaw = [] #[[id, delay]]
+	nodeRaw = [] #[[id, delay]] 
 	vertRaw = [] #[[(idA, idB), delay] 
-	nodeList = []
-	vertList = []
-	elements = []
+	nodeList = [] # result id and list
+	vertList = [] # reslut id id and list
+	elements = [] # 
 	count = 0
-	line = ""
+	line = "" # 1 num of file
 	test = "carrier"
 	#skipping first line of the file
 	while test == "carrier":	
@@ -206,24 +207,24 @@ def learn(filename):
 		#nodeRaw
 		for n in range(6):
 			nodeRaw.append([elements[n], elements[6]])
-		#vertRaw
-		for n in range(5):
-			for m in range(4-n):
-				vertRaw.append([(elements[n], elements[5-m]),elements[6]])
+#		#vertRaw
+#		for n in range(5):
+#			for m in range(4-n):
+#				vertRaw.append([(elements[n], elements[5-m]),elements[6]])
 		#next line
 		line = file.readline()
-		elements = line.split(",")
+		elements = line.split(",") # more elements
 		count += 1
 		#clean nodeRaw every 2E5 cycles
 		if (count % 2E5) == 0:
 			nodeX = transformRaw(nodeRaw)
 			nodeList = mergeList(nodeList, nodeX)
 			nodeRaw = []
-		#clean vertRaw every 1E5 cycles
-		if (count % 1E5) == 0:
-			vertX = transformRaw(vertRaw)
-			vertList = mergeList(vertList, vertX)
-			vertRaw = []
+#		#clean vertRaw every 1E5 cycles
+#		if (count % 1E5) == 0:
+#			vertX = transformRaw(vertRaw)
+#			vertList = mergeList(vertList, vertX)
+#			vertRaw = []
 		#print info about progress every ~1 minute TODO count
 		if (count % 2E5) == 0:
 			prog = 100 * count / total
@@ -233,11 +234,11 @@ def learn(filename):
 			sizeN = sys.getsizeof(nodeList[0])
 			for i in range(len(nodeList[0])):
 				sizeN += sys.getsizeof(nodeList[1][i])
-			#MEM vertRaw
+#			#MEM vertList
 			sizeV = 0
-			for i in range(len(vertList[0])):
-				sizeV += sys.getsizeof(vertList[0][i])
-				sizeV += sys.getsizeof(vertList[1][i])
+#			for i in range(len(vertList[0])):
+#				sizeV += sys.getsizeof(vertList[0][i])
+#				sizeV += sys.getsizeof(vertList[1][i])
 			infoMsg(str(int(prog)) + "% done, " + str(int(time / 60 * 100 / prog)) + " min remains, MEM nodeList " + str(int(sizeN/1E6)) + " MB, MEM vertRaw " + str(int(sizeV/1E6)) + " MB")
 	file.close()
 	#final clean of nodeRaw
@@ -246,21 +247,21 @@ def learn(filename):
 		nodeList = mergeList(nodeList, nodeX)
 		nodeRaw=[]
 	#final clean of vertRaw
-	if (count % 1E5) != 0:
-		vertX = transformRaw(vertRaw)
-		vertList = mergeList(vertList, vertX)
-		vertRaw = []
+#	if (count % 1E5) != 0:
+#		vertX = transformRaw(vertRaw)
+#		vertList = mergeList(vertList, vertX)
+#		vertRaw = []
 	end = datetime.datetime.now()
 	time = (end - start).total_seconds()
 	#MEM nodeList
 	sizeN = sys.getsizeof(nodeList[0])
 	for i in range(len(nodeList[0])):
 		sizeN += sys.getsizeof(nodeList[1][i])
-	#MEM vertRaw
+	#MEM vertList
 	sizeV = 0
-	for i in range(len(vertList[0])):
-		sizeV += sys.getsizeof(vertList[0][i])
-		sizeV += sys.getsizeof(vertList[1][i])
+#	for i in range(len(vertList[0])):
+#		sizeV += sys.getsizeof(vertList[0][i])
+#		sizeV += sys.getsizeof(vertList[1][i])
 	infoMsg("PROCESSED " + str(count) + " lines in " + str(int(time / 60)) + " min, MEM nodeList " + str(int(sizeN / 1E6)) + " MB, MEM vertList " + str(int(sizeV / 1E6)) + " MB")
 	return(nodeList, vertList)
 
@@ -270,8 +271,8 @@ def learn(filename):
 
 #Select the file
 #filename = 'data/delays_dataset.csv'
-filename = 'data/1mio_dataset.csv'
-#filename = 'data/100k_dataset.csv'
+#filename = 'data/1mio_dataset.csv'
+filename = 'data/100k_dataset.csv'
 #filename = 'data/10k_dataset.csv'
 #filename = 'data/100_dataset.csv'
 #filename = 'data/10_dataset.csv'
@@ -281,7 +282,7 @@ nodeList, vertList = learn(filename)
 
 #save the result
 writeNode(nodeList)
-writeVert(vertList)
+#writeVert(vertList)
 
 #write info, that job has been finished
 infoMsg("DONE Be happy :-)")
