@@ -1,4 +1,5 @@
-listx =[[(1,2),("sss",4),(5,6)],[9,9,9]]
+i = 2
+l = True
 
-i=1
-print(listx[0][i][1])
+if i == 1 and l == True:
+	print("ahoj")

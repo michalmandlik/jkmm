@@ -80,7 +80,7 @@ def adjElements (elements):
 	[carrier, fltno, dep_apt, arr_apt, delay]
 	["~CX", "!615", "@LAX", "#PRG", "$7", "+14", "5"]'''
 	t = time.strptime(str(elements[5]), "%Y-%m-%d %H:%M:%S" )
-	elements.append(calcDelay(str(elements[5])[:-1], str(elements[6])[:-1])) #delay
+	elements.append(calcDelay(str(elements[5]), str(elements[6])[:-1])) #delay
 	elements[0] = "!" + str(elements[0]) #carrier
 	elements[1] = "#" + str(elements[1]) #fltno
 	elements[2] = "$" + str(elements[2]) #dep_apt
@@ -176,7 +176,7 @@ def mergeList (listA, listB):
 			a +=1
 	return (listA)
 	
-def learn(filename):
+def learn(filename, vertGen):
 	'''function creates structure
 	made of nodeicies and nodes
 	each nodeice and nodes has a list
@@ -189,8 +189,8 @@ def learn(filename):
 	infoMsg("LEARNING from file: " + filename)
 	#inicialize the structure
 	nodeRaw = [] #[[id, delay]]
+	nodeList = []	
 	vertRaw = [] #[[(idA, idB), delay] 
-	nodeList = []
 	vertList = []
 	elements = []
 	count = 0
@@ -209,26 +209,27 @@ def learn(filename):
 		for n in range(l-1):
 			nodeRaw.append([elements[n], elements[-1]])
 		#vertRaw
-		for n in range(l-2):
-			for m in range(l-2-n):
-				vertRaw.append([(elements[n], elements[l-2-m]),elements[-1]])
+		if vertGen == True:
+			for n in range(l-2):
+				for m in range(l-2-n):
+					vertRaw.append([(elements[n], elements[l-2-m]),elements[-1]])
 		#next line
 		line = file.readline()
 		elements = line.split(",")
 		count += 1
 		#clean nodeRaw every 2E5 cycles
-		if (count % int(2E5)) == 0:
+		if (count % int(1E6)) == 0:
 			nodeX = transformRaw(nodeRaw)
 			nodeList = mergeList(nodeList, nodeX)
 			nodeRaw = []
 		#clean vertRaw every 1E5 cycles
-		if (count % int(1E5)) == 0:
+		if (count % int(1E5)) == 0 and vertGen == True :
 			vertX = transformRaw(vertRaw)
 			vertList = mergeList(vertList, vertX)
 			vertRaw = []
 		#print info about progress every ~1 minute TODO count
-		if (count % int(2E5)) == 0:
-			prog = 100 * count / total
+		if (count % int(1E6)) == 0:
+			prog = 100 * float(count) / float(total) #% lines done
 			end = datetime.datetime.now()
 			time = (end - start).total_seconds()
 			#MEM nodeList
@@ -237,10 +238,11 @@ def learn(filename):
 				sizeN += sys.getsizeof(nodeList[1][i])
 			#MEM vertList
 			sizeV = 0
-			for i in range(len(vertList[0])):
-				sizeV += sys.getsizeof(vertList[0][i])
-				sizeV += sys.getsizeof(vertList[1][i])
-			infoMsg(str(int(prog)) + "% done, " + str(int(time / 60 * 100 / prog)) + " min remains, MEM nodeList " + str(int(sizeN/1E6)) + " MB, MEM vertRaw " + str(int(sizeV/1E6)) + " MB")
+			if vertGen == True:
+				for i in range(len(vertList[0])):
+					sizeV += sys.getsizeof(vertList[0][i])
+					sizeV += sys.getsizeof(vertList[1][i])
+			infoMsg(str(int(prog)) + "% done, " + str(int(100 * (time / 60) / prog)) + " min remains, MEM nodeList " + str(int(sizeN/1E6)) + " MB, MEM vertRaw " + str(int(sizeV/1E6)) + " MB")
 	file.close()
 	#final clean of nodeRaw
 	if (count % int(2E5)) != 0:
@@ -248,7 +250,7 @@ def learn(filename):
 		nodeList = mergeList(nodeList, nodeX)
 		nodeRaw=[]
 	#final clean of vertRaw
-	if (count % int(1E5)) != 0:
+	if (count % int(1E5)) != 0 and vertGen == True:
 		vertX = transformRaw(vertRaw)
 		vertList = mergeList(vertList, vertX)
 		vertRaw = []
@@ -260,9 +262,10 @@ def learn(filename):
 		sizeN += sys.getsizeof(nodeList[1][i])
 	#MEM vertList
 	sizeV = 0
-	for i in range(len(vertList[0])):
-		sizeV += sys.getsizeof(vertList[0][i])
-		sizeV += sys.getsizeof(vertList[1][i])
+	if vertGen == True:
+		for i in range(len(vertList[0])):
+			sizeV += sys.getsizeof(vertList[0][i])
+			sizeV += sys.getsizeof(vertList[1][i])
 	infoMsg("PROCESSED " + str(count) + " lines in " + str(int(time / 60)) + " min, MEM nodeList " + str(int(sizeN / 1E6)) + " MB, MEM vertList " + str(int(sizeV / 1E6)) + " MB")
 	return(nodeList, vertList)
 
@@ -271,19 +274,22 @@ def learn(filename):
 #CAREFULL YOU MUST BE
 
 #Select the file
-#filename = 'data/delays_dataset.csv'
+filename = 'data/delays_dataset.csv'
 #filename = 'data/1mio_dataset.csv'
 #filename = 'data/100k_dataset.csv'
-filename = 'data/10k_dataset.csv'
+#filename = 'data/10k_dataset.csv'
 #filename = 'data/100_dataset.csv'
 #filename = 'data/10_dataset.csv'
 
+vertGen = False #generate vertList
+
 #MAIN function
-nodeList, vertList = learn(filename)
+nodeList, vertList = learn(filename, vertGen)
 
 #save the result
 writeNode(nodeList)
-writeVert(vertList)
+if vertGen == True:
+	writeVert(vertList)
 
 #write info, that job has been finished
 infoMsg("DONE Be happy :-)")
