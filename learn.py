@@ -37,7 +37,8 @@ def printList (nodeList):
 def writeNode (nodeList):
 	'''function writes resulting
 	nodeList to the file'''
-	filename = "output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_nodeList.csv"
+	filename = ("output/" + str(time.strftime("%y%m%d")) + "_" +
+				str(time.strftime("%H%M%S")) + "_nodeList.csv")
 	file = open(filename, 'w')
 	infoMsg("WRITING nodeList to file: " + filename)
 	#write first line
@@ -55,7 +56,8 @@ def writeNode (nodeList):
 def writeVert (vertList):
 	'''function writes resulting
 	nodeList to the file'''
-	filename = "output/" + str(time.strftime("%y%m%d")) + "_" + str(time.strftime("%H%M%S")) + "_vertList.csv"
+	filename = ("output/" + str(time.strftime("%y%m%d")) + "_" +
+				str(time.strftime("%H%M%S")) + "_vertList.csv")
 	file = open(filename, 'w')
 	infoMsg("WRITING vertList to file: " + filename)
 	#write first line
@@ -242,7 +244,10 @@ def learn(filename, vertGen):
 				for i in range(len(vertList[0])):
 					sizeV += sys.getsizeof(vertList[0][i])
 					sizeV += sys.getsizeof(vertList[1][i])
-			infoMsg(str(int(prog)) + "% done, " + str(int(100 * (time / 60) / prog)) + " min remains, MEM nodeList " + str(int(sizeN/1E6)) + " MB, MEM vertRaw " + str(int(sizeV/1E6)) + " MB")
+			infoMsg(str(int(prog)) + "% done, " +
+					str(int(100 * (time / 60) / prog)) +
+					" min remains, MEM nodeList " + str(int(sizeN/1E6)) +
+					" MB, MEM vertRaw " + str(int(sizeV/1E6)) + " MB")
 	file.close()
 	#final clean of nodeRaw
 	if (count % int(2E5)) != 0:
@@ -266,7 +271,10 @@ def learn(filename, vertGen):
 		for i in range(len(vertList[0])):
 			sizeV += sys.getsizeof(vertList[0][i])
 			sizeV += sys.getsizeof(vertList[1][i])
-	infoMsg("PROCESSED " + str(count) + " lines in " + str(int(time / 60)) + " min, MEM nodeList " + str(int(sizeN / 1E6)) + " MB, MEM vertList " + str(int(sizeV / 1E6)) + " MB")
+	infoMsg("PROCESSED " + str(count) + " lines in " +
+			str(int(time / 60)) + " min, MEM nodeList " +
+			str(int(sizeN / 1E6)) + " MB, MEM vertList " +
+			str(int(sizeV / 1E6)) + " MB")
 	return(nodeList, vertList)
 
 ########################################################################
