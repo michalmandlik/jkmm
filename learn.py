@@ -34,11 +34,11 @@ def printList (nodeList):
 	print("=============================")
 	return 0
 		
-def writeNode (nodeList):
+def writeNode (nodeList, outDir):
 	'''function writes resulting
 	nodeList to the file'''
-	filename = ("output/" + str(time.strftime("%y%m%d")) + "_" +
-				str(time.strftime("%H%M%S")) + "_nodeList.csv")
+	filename = (outDir + str(time.strftime("%m%d")) + "_" +
+				str(time.strftime("%H%M")) + "_nodeList.csv")
 	file = open(filename, 'w')
 	infoMsg("WRITING nodeList to file: " + filename)
 	#write first line
@@ -53,11 +53,11 @@ def writeNode (nodeList):
 	infoMsg("SIZE of nodeList is: " + str(statinfo.st_size/1000000) + " MB")
 	return 0
 	
-def writeVert (vertList):
+def writeVert (vertList, outDir):
 	'''function writes resulting
 	nodeList to the file'''
-	filename = ("output/" + str(time.strftime("%y%m%d")) + "_" +
-				str(time.strftime("%H%M%S")) + "_vertList.csv")
+	filename = (outDir + str(time.strftime("%m%d")) + "_" +
+				str(time.strftime("%H%M")) + "_vertList.csv")
 	file = open(filename, 'w')
 	infoMsg("WRITING vertList to file: " + filename)
 	#write first line
@@ -80,7 +80,7 @@ def adjElements (elements):
 	["CX", "615", "LAX", "PRG", "2016-05-04", "2016-05...", "2016-05..."]
 	example result
 	[carrier, fltno, dep_apt, arr_apt, delay]
-	["~CX", "!615", "@LAX", "#PRG", "$7", "+14", "5"]'''
+	["!CX", "#615", "$LAX", "&PRG", "+7", ":0", ">5"]'''
 	t = time.strptime(str(elements[5]), "%Y-%m-%d %H:%M:%S" )
 	elements.append(calcDelay(str(elements[5]), str(elements[6])[:-1])) #delay
 	elements[0] = "!" + str(elements[0]) #carrier
@@ -277,27 +277,32 @@ def learn(filename, vertGen):
 			str(int(sizeV / 1E6)) + " MB")
 	return(nodeList, vertList)
 
-########################################################################
+################################################################################
 
 #CAREFULL YOU MUST BE
 
+#Input parameters
+vertGen = False #generate vertList
+outDir = "data/small/"
+#outDir = "output/"
+
 #Select the file
-filename = 'data/delays_dataset.csv'
+#filename = 'data/delays_dataset.csv'
 #filename = 'data/1mio_dataset.csv'
 #filename = 'data/100k_dataset.csv'
 #filename = 'data/10k_dataset.csv'
 #filename = 'data/100_dataset.csv'
 #filename = 'data/10_dataset.csv'
 
-vertGen = False #generate vertList
+filename = "data/small/100_learn.csv"
 
 #MAIN function
 nodeList, vertList = learn(filename, vertGen)
 
 #save the result
-writeNode(nodeList)
+writeNode(nodeList, outDir)
 if vertGen == True:
-	writeVert(vertList)
+	writeVert(vertList, outDir)
 
 #write info, that job has been finished
 infoMsg("DONE Be happy :-)")
