@@ -81,7 +81,7 @@ def adjElements (elements):
 	["~CX", "!615", "@LAX", "#PRG", "$7", "+14", "5"]'''
      # because of ascii
 	t = time.strptime(str(elements[5]), "%Y-%m-%d %H:%M:%S" )
-	elements.append(calcDelay(str(elements[5])[:-1], str(elements[6])[:-1])) #delay
+	elements.append(calcDelay(str(elements[5]), str(elements[6])[:-1])) #delay
 	elements[0] = "!" + str(elements[0]) #carrier
 	elements[1] = "#" + str(elements[1]) #fltno
 	elements[2] = "$" + str(elements[2]) #dep_apt
@@ -229,7 +229,7 @@ def learn(filename):
 #			vertRaw = []
 		#print info about progress every ~1 minute TODO count
 		if (count % int(2E5)) == 0:
-			prog = 100 * count / total
+			prog = 100 * float(count) / float(total)
 			end = datetime.datetime.now()
 			time = (end - start).total_seconds()
 			#MEM nodeList
@@ -274,8 +274,8 @@ def learn(filename):
 #Select the file
 #filename = 'data/delays_dataset.csv'
 #filename = 'data/1mio_dataset.csv'
-filename = 'data/100k_dataset.csv'
-#filename = 'data/10k_dataset.csv'
+#filename = 'data/100k_dataset.csv'
+filename = 'data/10k_dataset.csv'
 #filename = 'data/100_dataset.csv'
 #filename = 'data/10_dataset.csv'
 
