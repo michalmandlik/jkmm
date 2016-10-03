@@ -1,6 +1,7 @@
 import os
 import time
 import random
+import datetime
 
 def loadElement(element, filename):
 	''' function loads dictionary of delays
@@ -74,31 +75,34 @@ def playGame(game):
 	return(result)
 
 ################################################################################
-
-nodeName = ("data/small/100_nodeList.csv")
-testName = ("data/small/100_test.csv")
-testFile = open(testName, "r")
-forecastName = ("data/small/100_forecast.csv")
-#forecastFile = open(forecastName, "w")
-game = [[],[]]
-line = testFile.readline()
-while (line != ""):
-	elements = line.split(",")
-	#write first line of the file
-	if elements[0] == "carrier":
-		line = testFile.readline()
-		#forecastFile.write(line)
-		continue
-	#prepare gameplan
-	game = prepareGame(elements, nodeName)
-	result = playGame(game)
-	print(result)
-	#next line
+def forecast(folder, prefix):
+	nodeName = (folder + prefix + "_nodeList.csv")
+	testName = (folder + prefix + "_test.csv")
+	testFile = open(testName, "r")
+	forecastName = (folder + prefix + "_forecast.csv")
+	forecastFile = open(forecastName, "w")
+	game = [[],[]]
 	line = testFile.readline()
+	
+	while (line != ""):
+		elements = line.split(",")
+		#write first line of the file
+		if elements[0] == "carrier":
+			forecastFile.write(line[:-1] + ",actual_departure\n")
+			line = testFile.readline()
+			continue
+		date = datetime.datetime.strptime(elements[-1][:-1], "%Y-%m-%d %H:%M:%S")
+		#prepare gameplan
+		game = prepareGame(elements, nodeName)
+		result = playGame(game)
+		if result != 0:
+			date += datetime.timedelta(minutes = result)
+			forecastFile.write(line[:-1] + "," + str(date) + "\n")
+		#next line
+		line = testFile.readline()
 
-#close all files
-
-testFile.close()
-#forecastFile.close()
+	#close all files
+	testFile.close()
+	forecastFile.close()
 
 
