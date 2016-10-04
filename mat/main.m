@@ -48,15 +48,20 @@ for jj = 1 : size(struct2anal, 2)
     hold on
     xlabel('Delay [hours]','FontSize',font_size_label); 
     ylabel('Quantity [dB]','FontSize',font_size_label); 
-    title(['Histogram of arr apt ',C{1,1}([2])],'FontSize',font_size_label)
+    title(['Histogram of month ',C{1,1}([2])],'FontSize',font_size_label)
     set(h_axes, 'FontSize', font_size)
     set(h_figure, 'position',[200 100 800 700]); % dolni roh [x y] horni roh [x y]
     set(h_figure(:),'color',[1 1 1]);
-    saveas(h_figure,['pics/arr_apt',C{1,1}([2]),'.tiff'])
-    %saveas(h_figure,['pics/hours',C{1,1}(2),'.fig'])
-%     close
 
-    out(1) = 1;
+
+    p = polyfit(c_delay, 10*log10(delay), 80)
+   
+    approx = polyval(p, c_delay);
+    approx(approx<0)=0
+    approx(approx>max(10*log10(delay)))=max(10*log10(delay));
+    
+    plot(c_delay, approx,'r.')
+    saveas(h_figure,['pics/month',C{1,1}([2]),'.tiff'])
 end
 
 
