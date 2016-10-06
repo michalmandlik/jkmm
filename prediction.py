@@ -22,15 +22,20 @@ def loadDB(dbName, dataName):
 	nameDB: string, path to database file
 	dataFile: string, path to csv dataset
 	'''
-
+	#remove file if it already exists
+	if os.path.isfile(dbName):
+		print("File \"" + dbName + " already exists.")
+		q = input("Do you want to owerwrite it (y/n): ")
+		if q != "y":
+			print("ERR")
+			return(1) 
+		os.remove(dbName)
 	dataFile = open(dataName)
 	con = lite.connect(dbName)
 	infoMsg("LOAD started")
 	#writing the database
 	with con:
 		cur = con.cursor()
-		cur.execute("DROP TABLE IF EXISTS Data")
-		cur.execute("DROP TABLE IF EXISTS Backup")
 		#prepare database table
 		cur.execute("CREATE TABLE Data(carrier TEXT, fltno TEXT, " +
 										"dep_apt TEXT, arr_apt TEXT, " +
@@ -43,8 +48,7 @@ def loadDB(dbName, dataName):
 			ele = line.split(",")
 		else:
 			print("ERR")
-			return(1)
-		
+			return(1)		
 		#read line by line and save elements to a list of tuples
 		data = []
 		i = 0
@@ -105,6 +109,7 @@ def exportDB(dbName, exportName):
 	exportName: string, path to the exported file
 	'''
 	infoMsg("EXPO started")
+	#prepare file and write first line
 	exportFile = open(exportName, "w")
 	firstLine = ("carrier,fltno,dep_apt,arr_apt," + 
 				"sched_departure_date,scheduled_departure,actual_departure\n")
@@ -112,6 +117,7 @@ def exportDB(dbName, exportName):
 	con = lite.connect(dbName)
 	cur = con.cursor()
 	cur.execute('SELECT * FROM Data')
+	#read database line by line and write it to the file
 	i = 0
 	for row in cur:
 		sch_dep = row[4][:9]
@@ -142,15 +148,20 @@ def removeDuplicity(dbName):
 		cur = con.cursor()
 		cur.execute("SELECT Count() FROM Data")
 		count = cur.fetchone()[0]
+		#create backup table
 		cur.execute("CREATE TABLE Backup(carrier TEXT, fltno TEXT, " +
 		 								"dep_apt TEXT, arr_apt TEXT, " +
 		 								"sch_dep TEXT, delay INT)")
 		infoMsg("DUPL backup created")
+		#write all lines from data to backup
+		#if there is duplicity, take the one with max delay		
 		cur.execute("INSERT INTO Backup " +
-					"SELECT carrier,fltno,dep_apt,arr_apt,sch_dep, Max(delay) delay " +
+					"SELECT carrier,fltno,dep_apt,arr_apt,sch_dep, " + 
+							"Max(delay) delay " +
 		 			"FROM Data " +
 		 			"GROUP BY carrier,fltno,dep_apt,arr_apt,sch_dep")
 		infoMsg("DUPL duplicities removed")	
+		#delete Data and rename Backup to Data
 		cur.execute("DROP TABLE Data")
 		cur.execute("ALTER TABLE Backup RENAME TO Data")
 	infoMsg("DUPL done")
