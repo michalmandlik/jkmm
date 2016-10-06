@@ -16,8 +16,7 @@ def calcDelay (sch_dep, act_dep):
 		return (delay)
 	else :
 		return (delay)
-
-#TODO common routines to separate file	
+	
 def infoMsg (message):
 	'''function writes formated message'''
 	t = datetime.datetime.now()
