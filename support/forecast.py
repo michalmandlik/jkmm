@@ -3,12 +3,16 @@ import time
 import random
 import datetime
 
-def loadElement(element, filename):
+def loadIndex(nodeFile):
+	#TODO implement loadin index of lines
+
+def loadElement(element, nodeFile, nodeIndex):
 	''' function loads dictionary of delays
 	for specific id and returns list of delays'''
 	delays = []
 	dictionary = {}
-	nodeFile = open(filename, "r")
+
+	#TODO load specific line from nodeFile
 
 	line = nodeFile.readline()
 	while (line != ""):
@@ -42,13 +46,13 @@ def adjElements(elements):
 	elements.append(">" + str(t[1])) #month
 	return (elements)
 
-def prepareGame(elements, nodeName):
+def prepareGame(elements, nodeFile, nodeIndex):
 	'''function returns list of ids with
 	associated list of delays'''
 	game = [[],[]]
 	elements = adjElements(elements)
 	for i in range(len(elements)):
-		delays = loadElement(elements[i], nodeName)
+		delays = loadElement(elements[i], nodeFile, nodeIndex)
 		if delays != []:
 			game[0].append(elements[i])
 			game[1].append(delays)
@@ -62,11 +66,12 @@ def printGame(game):
 	print("xxxxxxxxxxxxxxxxxxx")
 	return(0)
 
+#TODO Evaluate time consumption
 def playGame(game):
 	'''function collects delays from game plan
 	and returns expected delay'''
 	delays = []
-	for i in range(1000):
+	for i in range(10000):
 		select = int(random.random() * len(game[0]))
 		field = int(random.random() * len(game[1][select]))
 		delays.append(int(game[1][select][field]))
@@ -74,16 +79,25 @@ def playGame(game):
 	result = int(sum(delays)/len(delays))
 	return(result)
 
+#TODO common routines to separate file
+def infoMsg (message):
+	'''function writes formated message'''
+	t = datetime.datetime.now()
+	print(t.strftime("%H:%M:%S.%f") + " " + message)
+	return 0
+
 ################################################################################
-def forecast(folder, prefix):
-	nodeName = (folder + prefix + "_nodeList.csv")
-	testName = (folder + prefix + "_test.csv")
+def forecast(nodeName, testName, forecastName):
+	infoMsg("PREDICTING started for \"" + testName + "\"")
 	testFile = open(testName, "r")
-	forecastName = (folder + prefix + "_forecast.csv")
+	nodeFile = open(nodeName, "r")
 	forecastFile = open(forecastName, "w")
+
+	
 	game = [[],[]]
 	line = testFile.readline()
-	
+	#for each line append expected departure time
+	i = 0
 	while (line != ""):
 		elements = line.split(",")
 		#write first line of the file
@@ -93,16 +107,22 @@ def forecast(folder, prefix):
 			continue
 		date = datetime.datetime.strptime(elements[-1][:-1], "%Y-%m-%d %H:%M:%S")
 		#prepare gameplan
-		game = prepareGame(elements, nodeName)
+		infoMsg("start")
+		game = prepareGame(elements, nodeFile)
+		infoMsg("game done")
 		result = playGame(game)
+		infoMsg("result done")
 		if result != 0:
 			date += datetime.timedelta(minutes = result)
 			forecastFile.write(line[:-1] + "," + str(date) + "\n")
+			i += 1
+			if (i % 10) == 0:
+				infoMsg(str(i))
 		#next line
 		line = testFile.readline()
-
 	#close all files
 	testFile.close()
 	forecastFile.close()
+	infoMsg("PREDICTING done")
 
 

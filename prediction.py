@@ -4,10 +4,21 @@ import sqlite3 as lite
 import sys
 import os
 import datetime
-import hashlib
+import random
+import pprint as pp
+import marshal
+import time
 
+#TODO export nodes
+#TODO verticies ...
+#TODO strange results, too high delay CONTINUE HERE
+#TODO speed up prediction
+#TODO easy parameter selection
+#TODO prepare test data for single test
 
-def loadDB(dbName, dataName):
+#NOTE it is expected 200k lines in testing dataset delays.csv
+
+def loadDB(dbName, dataName, table):
 	'''
 	Function creates SQLite database and loads data from csv file.
 	
@@ -22,23 +33,19 @@ def loadDB(dbName, dataName):
 	nameDB: string, path to database file
 	dataFile: string, path to csv dataset
 	'''
-	#remove file if it already exists
-	if os.path.isfile(dbName):
-		print("File \"" + dbName + " already exists.")
-		q = input("Do you want to owerwrite it (y/n): ")
-		if q != "y":
-			print("ERR")
-			return(1) 
-		os.remove(dbName)
 	dataFile = open(dataName)
 	con = lite.connect(dbName)
-	infoMsg("LOAD started")
+	infoMsg("LOAD started", True)
 	#writing the database
+	i = 0
+	fault = 0
 	with con:
 		cur = con.cursor()
 		#prepare database table
-		cur.execute("CREATE TABLE Data(carrier TEXT, fltno TEXT, " +
+		cur.execute("DROP TABLE IF EXISTS " + table)
+		cur.execute("CREATE TABLE " + table + "(carrier TEXT, fltno TEXT, " +
 										"dep_apt TEXT, arr_apt TEXT, " +
+										"month TEXT, day TEXT, hour TEXT, " +
 										"sch_dep TEXT, delay INT)")
 		#skip first line
 		line = dataFile.readline()
@@ -51,36 +58,47 @@ def loadDB(dbName, dataName):
 			return(1)		
 		#read line by line and save elements to a list of tuples
 		data = []
-		i = 0
-		s = 0
 		while (line != ""):
-			if ele[6][:-1] == "":
-				line = dataFile.readline()
-				ele = line.split(",")
-				s += 1
-				continue
-			delay = calcDelay(ele[5], ele[6][:-1])
-			line = str(ele[0] + ele[1] + ele[2] + 
-						ele[3] + ele[5]).encode('utf-8')
-			lineHash = (hashlib.md5(line)).hexdigest()
-			data.append((ele[0], ele[1], ele[2], ele[3],
-						ele[5], delay))
-						#next line
+			#skip lines with missing actual_departure
+			if ele[-1][:-1] == "":
+				fault += 1
+			else:
+				#if loading prediction dataset, set delay really high
+				delay = 0
+				if len(ele) == 6:
+					delay = 99999
+					ele[5] = ele[5][:-1]					
+				else:
+					delay = calcDelay(ele[5], ele[6][:-1])
+				#split time to more relevant chunks
+				t = time.strptime(str(ele[5]), "%Y-%m-%d %H:%M:%S" )
+				month = t[1]
+				day = t[6] #weekday
+				hour = int(t[3]/6) #hour range 0-6, 6-12, 12-18, 18-24
+				#apend all data to the list
+				data.append((ele[0], ele[1], ele[2], ele[3],
+							str(month), str(day), str(hour), 
+							ele[5], delay))
+			#next line
 			line = dataFile.readline()
 			ele = line.split(",")
 			#every 1E6 lines, write to database
 			i += 1
-			if (i % 1E6) == 0 or line == "":
-				infoMsg("LOAD " + str(int(i/1e6)) + "M lines written, " +
-								str(int(100*((i+s)/1e6)/52)) + "% processed")
-				cur.executemany("INSERT INTO Data VALUES"
-								"(?, ?, ?, ?, ?, ?)", data)
+			#TODO correct progres counter
+			if (i % 1E6) == 0 or len(line) == 0:
+				infoMsg("LOAD " + str(int(i/1e6)) +
+						"M lines written to DB, " +
+						str(int(100*((i+fault)/1e6)/52)) +
+						"% processed", False)
+				cur.executemany("INSERT INTO " + table + " VALUES" +
+								"(?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
 				data = []
-	infoMsg("LOAD done")
+	con.close()
+	infoMsg("LOAD done, " + str(i) + " lines written, " 
+						+ str(fault) + " faulty lines", True)
 	return(0)
 
-
-def printDB(dbName):
+def printDB(dbName, table):
 	'''
 	Supporting function. It prints the database to the standart output.
 
@@ -89,11 +107,11 @@ def printDB(dbName):
 	con = lite.connect(dbName)
 	with con:	
 		cur = con.cursor()
-		cur.execute("SELECT * FROM Data")
+		cur.execute("SELECT * FROM " + table)
 		for row in cur:
-			print(row)
+			print(str(row)[:100])
+	con.close()
 	return(0)
-
 
 def exportDB(dbName, exportName):
 	'''
@@ -108,7 +126,7 @@ def exportDB(dbName, exportName):
 	dbName: string, path to database file
 	exportName: string, path to the exported file
 	'''
-	infoMsg("EXPO started")
+	infoMsg("EXPO started", True)
 	#prepare file and write first line
 	exportFile = open(exportName, "w")
 	firstLine = ("carrier,fltno,dep_apt,arr_apt," + 
@@ -127,9 +145,10 @@ def exportDB(dbName, exportName):
 		exportFile.write(line)
 		i += 1
 		if (i % 1E6) == 0:
-			infoMsg("EXPO " + str(int(i/1E6)) + "M lines exported")
+			infoMsg("EXPO " + str(int(i/1E6)) + "M lines exported", False)
 	exportFile.close()
-	infoMsg("EXPO done")
+	con.close()
+	infoMsg("EXPO done", True)
 	return(0)
 
 def removeDuplicity(dbName):
@@ -141,32 +160,37 @@ def removeDuplicity(dbName):
 
 	dbName: string, path to database file
 	'''
-	infoMsg("DUPL started")
+	infoMsg("DUPL started", True)
 	con = lite.connect(dbName)
-
+	count = 0
 	with con:	
 		cur = con.cursor()
 		cur.execute("SELECT Count() FROM Data")
 		count = cur.fetchone()[0]
 		#create backup table
-		cur.execute("CREATE TABLE Backup(carrier TEXT, fltno TEXT, " +
-		 								"dep_apt TEXT, arr_apt TEXT, " +
-		 								"sch_dep TEXT, delay INT)")
-		infoMsg("DUPL backup created")
+		cur.execute("DROP TABLE IF EXISTS Backup")
+		cur.execute("CREATE TABLE  Backup(carrier TEXT, fltno TEXT, " +
+										"dep_apt TEXT, arr_apt TEXT, " +
+										"month INT, day INT, hour INT, " +
+										"sch_dep TEXT, delay INT)")
+		infoMsg("DUPL backup created", False)
 		#write all lines from data to backup
 		#if there is duplicity, take the one with max delay		
 		cur.execute("INSERT INTO Backup " +
-					"SELECT carrier,fltno,dep_apt,arr_apt,sch_dep, " + 
+					"SELECT carrier,fltno,dep_apt,arr_apt," +
+							"month,day,hour,sch_dep, " + 
 							"Max(delay) delay " +
 		 			"FROM Data " +
 		 			"GROUP BY carrier,fltno,dep_apt,arr_apt,sch_dep")
-		infoMsg("DUPL duplicities removed")	
+		infoMsg("DUPL removing finished", True)	
 		#delete Data and rename Backup to Data
 		cur.execute("DROP TABLE Data")
 		cur.execute("ALTER TABLE Backup RENAME TO Data")
-	infoMsg("DUPL done")
+		cur.execute("SELECT Count() FROM Data")
+		count = count - cur.fetchone()[0]
+	con.close()
+	infoMsg("DUPL done, " + str(count) + " duplicities removed", True)
 	return(0)
-
 
 def calcDelay (sch_dep, act_dep):
 	'''
@@ -212,7 +236,8 @@ def reverseDelay (sch_dep, delay):
 		act = sch + delay
 		hours = int(act / 60)
 		minutes = int(act % 60)
-		time = (format(str(hours).zfill(2)) + ":" + format(str(minutes).zfill(2)) + ":" +"00")
+		time = (format(str(hours).zfill(2)) + ":" + 
+				format(str(minutes).zfill(2)) + ":" + "00")
 		date = sch_dep.split(" ")
 		act_dep = str(date[0] + " " + time)
 	else:
@@ -221,39 +246,531 @@ def reverseDelay (sch_dep, delay):
 		act_dep = act_dep.strftime("%Y-%m-%d %H:%M:%S")
 	return (act_dep)
 
-def infoMsg(message):
+def infoMsg(message, log):
 	'''
 	Supporting function prints actual time and defined message.
 
 	message: string, message printed to the stdout
+	log: bool, if true write message to log file
 	'''
+	logName = "output/prediction.log"
+	#create blank log if it is not existing
+	if not os.path.isfile(logName):
+		logFile = open(logName, "w")
+		logFile.close()
 	t = datetime.datetime.now()
-	print(t.strftime("%H:%M:%S") + " " + message)
+	msg = t.strftime("%H:%M:%S") + " " + message
+	print(msg)
+	#write to log
+	if log == True:
+		logFile = open(logName, "a")
+		logFile.write(msg + "\n")
+		logFile.close()
 	return(0)
 
-def test(dbName):
+def loadGame(dbName, elements):
 	'''
-	Supporting function for testing crazy ideas.
+	Function searches through the database and creates list of delays
+	for each element. It return list of element names and list of
+	corresponding delays.
+
+	dbName: string, path to database file
+	elements: list of string, element names
+
+	game: list of lists, example ["PRG","CX","345"],[[0,10,12],[-5,3],[0]]
 	'''
+	#check if DB file exists
+	if not os.path.isfile(dbName):
+		infoMsg("ERR File \"" + dbName + " does not exist", True)
+		return(1) 
+
+	con = lite.connect(dbName)
+	game = [[],[]]
+	#TODO implement game loading
+	con.close()
+	return(game)
+
+def playGame(game):
+	'''
+	Function goes through delays each relevant element. It calculates
+	final delay and returns it.
+	It choose next element randomly and also randomly chose the delay from its
+	list of delays. Probability of choosing the element is weighted by its
+	size od delay list.
+	Resulting delay is calculated as average of choosen delays
+	
+	game: list of lists, element name with coresponding list of delays
+
+	result: int, final delay
+	'''
+	#TIME 2 900 us / call
+	delays = []
+	#TODO set relevant steps
+	steps = 1000
+	#weigth for carrier,fltno, dep_apt, arr_apt, month, day, hour
+	weigth = [100, 100, 100, 100, 100, 100, 100]
+	prob = []
+	#calculate preference of the elements
+	for i in range(len(game[1])):
+		#prob.append(len(game[1][i]) * weigth[i])
+		prob.append(weigth[i])
+	#gather delays according weights
+	for i in range(steps):
+		#select which game element will be used next
+		a = int(random.random() * (sum(prob) - 1))
+		for n in range(len(prob)):
+			#empty element
+			if prob[n] == 0:
+				continue
+			if int(a / prob[n]) == 0:
+				a = n
+				break
+			else:
+				a = a - prob[n]
+		#check if game element contains some data
+		if (len(game[1][a]) == 0):
+			continue
+		#select which delay from element will be gathered
+		b = int(random.random() * (len(game[1][a]) - 1))
+		delays.append(game[1][a][b])
+	#calculate average from delays list
+	result = int(sum(delays) / len(delays))
+	return (result)
+
+def predictDelays(dbName, predictName):
+	'''
+	Function opens file with data for prediction. It loads the file to the
+	databes. Then it runs "game" for each line of the file and writes
+	predicted delay to the database. At the end it exports the file.
+
+	dbName: string, path to database file
+	predictName: string, pat to file with data for prediction
+	'''
+	#open DB, create table Pred and load data from prediction file
+	infoMsg("PRED prediction started", True)
+	loadDB(dbName, predictName, "Pred")
+	#TODO separate loading function
+	con = lite.connect(dbName)
+	count = 0
+	with con:		
+		cur = con.cursor()
+		ele = cur.execute("SELECT * FROM Pred")
+		ele = ele.fetchall()
+		#TIME 574 000 us / cycle
+		for row in ele:
+			#load all element names to the first list
+			game = [[],[]]
+			#search in Data for delays for each element
+			#setup which nodes will be used
+			#NODES
+			ids = ["carrier","fltno","dep_apt","arr_apt","month","day","hour"]
+			#prepare list for game
+			for i in range(len(ids)):
+				game[0].append(row[i])
+			#TIME 140 000 us / cycle -> 7 c/s -> 200k cycl 47 min
+			for i in range(len(ids)):
+				element = (game[0][i], ids[i])
+				#load data from node list
+				cur.execute("SELECT delay FROM Nodes" +
+							" WHERE id = \"" + game[0][i] + "\"" +
+							" AND type = \"" + ids[i] + "\"")
+				delays = cur.fetchall()
+				#check if the result is empty
+				if len(delays) != 0:
+					delays = marshal.loads(delays[0][0])
+					game[1].append(delays)
+				else:
+					game[1].append([])
+			#check if game is not empty
+			gameSum = 0
+			for i in range(len(game[1])):
+				gameSum += len(game[1][i])
+			if gameSum == 0:
+				#TODO ??? if there are no data for the game return 0
+				delay = 0
+			else:
+				#predict delay
+				delay = playGame(game)
+			#write delay to the database
+			#NODES
+			cur.execute("UPDATE Pred " +
+						"SET delay = " + str(delay) +
+						" WHERE carrier = \'" + game[0][0] + "\'" +
+							" AND fltno = \'" + game[0][1] + "\'" +
+							" AND dep_apt = \'" + game[0][2] + "\'" +
+							" AND arr_apt = \'" + game[0][3] + "\'" +
+							" AND month = \"" + game[0][4] + "\"" +
+							" AND day = \"" + game[0][5] + "\"" +
+							" AND hour = \"" + game[0][6] + "\"" +
+							" AND delay = 99999")
+			con.commit()
+			#progress info
+			count += 1
+			#TODO correct the counter
+			if (count % 1e2) == 0:
+				infoMsg("PRED " + str(count) + " lines processed, " + 
+						str(int(count/len(row))) + "% done", False)
+	con.close()
+	infoMsg("PRED prediction done", True)
+	return(0)
+
+def evaluatePrediction(dbName, controlName):
+	'''
+	Funtion reads the database and calculates difference between
+	predicted and real delays. It writes the report with results.
+
+	dbName: string, path to database file
+	controlName: string, path to the file with control values
+
+	diff: int, total difference of delays
+	count: int, number of predicted values
+	'''
+	#TODO implement evaluation, writes to log\
+	infoMsg("EVAL evaluating the prediction", True)
+	loadDB(dbName, controlName, "Control")
+	con = lite.connect(dbName)
+	diff = 0
+	count = 0
+	with con:		
+		cur = con.cursor()
+		#TODO use loop to load control and predict
+		#delays from prediction
+		predict = cur.execute("SELECT delay FROM Pred")
+		predict = predict.fetchall()
+		for i in range(len(predict)):
+			predict[i] = predict[i][0]
+		control = cur.execute("SELECT delay FROM Control")
+		#delays from control dataset
+		control = control.fetchall()
+		for i in range(len(control)):
+			control[i] = control[i][0]
+		#delays from learn dataset
+		learn = cur.execute("SELECT delay FROM Data")
+		learn = learn.fetchall()
+		for i in range(len(learn)):
+			learn[i] = learn[i][0]
+		#calculate results
+		count = len(predict)
+		predErr = (sum(predict) - sum(control)) / count
+		zeroErr = sum(control) / count
+		avgErr = ((count * sum(learn) / len(learn)) - sum(control)) / count
+	#TODO check if everytime the connection is closed
+	con.close()
+	infoMsg("EVAL evaluating done", True)
+	return((predErr, zeroErr, avgErr))
+
+def evaluationReport(evaluation, predictName):
+	infoMsg("=====================================",True)
+	infoMsg("File: " + predictName,True)
+	infoMsg("Method: nodeList + average",True)
+	infoMsg("Prediction error: " + format(evaluation[0], '.2f') + " min",True)
+	x = 100 * (evaluation[0] - evaluation[1]) / evaluation[1]
+	infoMsg("Zero error: " +
+			format(evaluation[1], '.2f') + " min, delta: " +
+			format(x, '.2f') + "%", True)
+	x = 100 * (evaluation[0] - evaluation[2]) / evaluation[2]
+	infoMsg("Average error: "+
+			format(evaluation[2], '.2f') + " min, delta:" +
+			format(x, '.2f') + "%", True)
+	infoMsg("=====================================",True)
+	return(0)
+
+def prepareTestSet(dbName, output, num):
+	'''
+	Function splits original data to the smaller sets. It creates
+	files for learning, files for testing and also control file
+	for evaluating of prediction results.
+
+	dbName: string, path to database file
+	output: string, path to the output folder, to store the test set
+	num: int, count of test files generated from test set
+	'''
+	infoMsg("SET preparation of test set started", True)
+	#rate between lear lines count and test lines count
+	countLearn = 1e6
+	countPredict = 1e4
+	#initialize "num" files for learn, predict and control 
+	files = [[],[],[]]
+	names = ["learn", "predict", "control"]
+	firstLine = ("carrier,fltno,dep_apt,arr_apt," + 
+				"sched_departure_date,scheduled_departure,actual_departure\n")
+	for i in range(num):
+		for n in range(len(names)):
+			name = output + str(i) + "_" + names[n] + ".csv"
+			files[n].append(open(name, "w"))
+			files[n][i].write(firstLine)
+	#randomly select file and write the line into it
 	con = lite.connect(dbName)
 	with con:	
 		cur = con.cursor()
-		cur.execute("SELECT Count() FROM Data")
-		total = cur.fetchone()[0]
-		print(total)
+		cur.execute("SELECT * FROM Data ORDER BY sch_dep")
+		i = 0
+		n = 0
+		x = 0
+		for row in cur:
+			sch_dep = row[-2][:9]
+			act_dep = reverseDelay(row[-2], int(row[-1]))
+			line = (row[0] + "," + row[1] + "," + row[2] + "," + row[3] + 
+					"," + sch_dep + "," + row[-2] + "," + act_dep + "\n")
+			if n > countLearn:
+				#predict and control file
+				c = line[:-21] + "\n"
+				files[1][x].write(c)
+				files[2][x].write(line)
+				n += 1
+			else:
+				#learn file
+				files[0][x].write(line)
+				n += 1
+			if n == (countLearn + countPredict):
+				n = 0
+				x += 1
+				if x >= num:
+					break
+			i += 1
+			if (i % 1E6) == 0:
+				infoMsg("SET " + str(int(i/1E6)) + "M lines exported", False)
+	#close all open files
+	for i in range(num):
+		for n in range(len(names)):
+			files[n][i].close()
+	con.close()
+	infoMsg("SET test set generated in \"" + output + "\"", True)
+	return(0)
+
+def createNode(dbName):
+	'''
+	Function creates table of nodes wit corresponding delays.
+	These are later used for faster search to prepare the game
+
+	dbName: string, path to database file	
+	'''
+	con = lite.connect(dbName)
+	infoMsg("CNOD started", True)
+	#writing the database
+	with con:
+		cur = con.cursor()
+		#prepare database table
+		cur.execute("DROP TABLE IF EXISTS Nodes")
+		cur.execute("CREATE TABLE Nodes (id TEXT, type TEXT, delay INT)")
+		#TODO date element
+		ids = ["carrier","fltno","arr_apt","dep_apt","month","hour","day"]
+		#search all names for each id
+		nodeRaw = [] #(id, type, delays)
+		cur.execute("SELECT * FROM Data")
+		count = 0
+		#load raw delays to the list
+		for row in cur:
+			for i in range(len(ids)):
+				nodeRaw.append((str(row[i]), ids[i], row[-1]))
+		nodeRaw.sort()
+		infoMsg("CNOD nodeRaw loaded", True)
+		nodeList = [[],[]]
+		#keep only unique ids
+		for i in range(len(nodeRaw)):
+			element = (nodeRaw[i][0], nodeRaw[i][1])
+			delay = nodeRaw[i][2]
+			if len(nodeList[0]) == 0 or nodeList[0][-1] != element:
+				nodeList[0].append(element)
+				nodeList[1].append([delay])
+				continue
+			else:
+				nodeList[1][-1].append(delay)
+		infoMsg("CNOD nodeRaw processed", True)
+		#create blobs from delays
+		nodes = []
+		for i in range(len(nodeList[0])):
+			id = nodeList[0][i][0]
+			type = nodeList[0][i][1]
+			delay = marshal.dumps(nodeList[1][i])
+			nodes.append((id, type, delay))
+		#write to DB and print info about progres
+		infoMsg("CNOD writing nodes to DB", True)
+		cur.executemany("INSERT INTO Nodes VALUES (?, ?, ?)", nodes)
+		con.commit()
+	con.close()	
+	infoMsg("CNOD done", True)
+	return(0)
+
+def exportNodes (dbName, exportName):
+	'''
+	Function exports nodes from database to the csv list.
+	'''
+	#TODO implement function
+	return(0)
+
+def test():
+	'''
+	Supporting function for testing of crazy ideas.
+	'''
+	dbName = "output/small/1M_data.db"
+
+	# #DB count lines
+	# con = lite.connect(dbName)
+	# with con:	
+	# 	cur = con.cursor()
+	# 	cur.execute("SELECT Count() FROM Data")
+	# 	total = cur.fetchone()[0]
+	# 	print(total)
+
+	# #DB search min and max
+	# con = lite.connect(dbName)
+	# with con:	
+	# 	cur = con.cursor()
+	# 	x = cur.execute("SELECT MIN(sch_dep), MAX(sch_dep) FROM Data")
+	# 	print(cur.fetchall())
+
+	#serialize object
+	# listicek = [0,1,-3,19]
+	# print(listicek)
+	# listicek = marshal.dumps(listicek)
+	# print(listicek)
+	# listicek = marshal.loads(listicek)
+	# print(listicek)
+
+	#get unique values from db
+	# con = lite.connect(dbName)
+	# with con:	
+	# 	cur = con.cursor()
+	# 	cur.execute("SELECT DISTINCT carrier FROM Data ORDER BY carrier")
+	# 	x = cur.fetchall()
+	# 	print(x=)
+
+	return(0)
+
 ##############################################################################
 
-### THE PROGRAMM ###
+### THE PROGRAM ###
+def main():
 
-#path to original dataset file
-dataName = "data/delays_dataset.csv"
+	#RUN SETUP
+	#If you want to start testrun with multiple files, set True
+	multi = False
+	#If you want test run
+	testing = True
+	#If yo want very small dataset
+	fast = False
+	#If you want to run prediction for real
+	real = False
 
-#path, where the database will be stored
-dbName = "output/test.db"
+	#Run conditions check
+	if multi:
+		if not testing or fast or real:
+			infoMsg("Run conditions are not right!", True)
+			return(1)
+	if real:
+		if multi or testing or fast:
+			infoMsg("Run conditions are not right!", True)
+			return(1)
+	if fast:
+		if multi or not testing or real:
+			infoMsg("Run conditions are not right!", True)
+			return(1)
 
-#export cleaned dataset file
-exportName = "output/clean.csv"
+	#DEFINITIONS
+	#path to dataset file	
+	if testing:
+		dataName = "output/small/1M_learn.csv"
+	if fast:
+		dataName = "output/small/100_learn.csv"
+	if multi or real:
+		dataName = "data/delays_dataset_clean.csv"
+	#path to file, which shoud be predicted
+	if testing:	
+		predictName = "output/small/1M_predict.csv"
+	if fast:
+		predictName = "output/small/100_predict.csv"
+	if real:
+		predictName = "delays.csv"
+	#path to file with control data
+	if testing:
+		controlName = "output/small/1M_control.csv"
+	if fast:
+		controlName = "output/small/100_control.csv"
+	#path, where the database will be stored
+	if testing:
+		dbName = "output/small/1M_data.db"
+	if fast:
+		dbName = "output/small/100_data.db"	
+	if real:
+		dbName = "database.db"
+	if multi:
+		dbName = "output/set/multi.db"
+	#export cleaned dataset file
+	exportName = "output/clean.csv"
+	#path to log file
+	if testing:
+		logName = "output/predict.log"
+	if real:
+		logName = "predict.log"
+	#output dir for testing set and test file count
+	outputSet = "output/set/"
+	num = 19
 
-loadDB(dbName, dataName)
-removeDuplicity(dbName)
-exportDB(dbName, exportName)
+	#PROGRAM
+	#check if DB already exists
+	dbWrite = True
+	if os.path.isfile(dbName) and not real:
+		print("File \"" + dbName + " already exists.")
+		q = input("Do you want to owerwrite it (y/[n]): ")
+		if q == "y":
+			os.remove(dbName)		
+		else:
+			dbWrite = False
+	#check output directory
+	if not os.path.exists("output"):
+			os.makedirs("output")
+
+	#multiple file load - testing purposes
+	if multi:
+		#check directory for test set
+		if not os.path.exists(outputSet):
+			os.makedirs(outputSet)
+		if dbWrite:
+			#create source DB from big dataset
+			loadDB(dbName, dataName, "Data")
+			#prepare testing sets 
+			prepareTestSet(dbName, outputSet, num)
+		for i in range(num):
+			#create database for each learn file
+			infoMsg("########## MULT set number " + str(i), True)
+			dbName = outputSet + str(i) + "_data.db"
+			dataName = outputSet + str(i) + "_learn.csv"
+			loadDB(dbName, dataName, "Data")
+			#create nodes table for faster searching
+			createNode(dbName)
+			#creaate prediction for each predict file
+			predictName = outputSet + str(i) + "_predict.csv"
+			predictDelays(dbName, predictName)
+			#check the result with the control file
+			controlName = outputSet + str(i) + "_control.csv"
+			evaluation = evaluatePrediction(dbName, controlName)
+			#print report and write to the log
+			evaluationReport(evaluation, predictName)
+			#TODO check speed of the algoritm
+
+	#single file load, final runs
+	if testing:
+		if dbWrite:
+			#create DB from the learn file
+			loadDB(dbName, dataName, "Data")
+			#check DB for duplicities and remove if any
+			removeDuplicity(dbName)
+			#create nodes table for faster searching
+			createNode(dbName)
+		#run the prediction
+		predictDelays(dbName, predictName)
+		#TODO wite results to the file
+		#check the result with the control file
+		evaluation = evaluatePrediction(dbName, controlName)
+		#print report and write to the log
+		evaluationReport(evaluation, predictName)
+
+	#single file, REAL run, no control, no report
+	if real:
+		print("jedeme na ostro")
+		#TODO implement final run
+	
+	return(0)
+
+main()
