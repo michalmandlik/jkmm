@@ -1,0 +1,7 @@
+# exclude all files in the list
+/output/*
+/data/*
+!/data/10_dataset.csv
+!/output/ahoj.txt
+__pycache__
+
