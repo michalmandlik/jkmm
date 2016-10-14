@@ -16,8 +16,7 @@ def calcDelay (sch_dep, act_dep):
 		return (delay)
 	else :
 		return (delay)
-
-#TODO common routines to separate file	
+	
 def infoMsg (message):
 	'''function writes formated message'''
 	t = datetime.datetime.now()
@@ -117,7 +116,7 @@ def transformRaw(rawList):
 	return (list)
 	
 def listToDict (listx):
-	'''convert node list to dictionary,
+	'''connode list to dictionary,
 	where the key is unique item
 	from the list and value is
 	count of the item in the list'''
