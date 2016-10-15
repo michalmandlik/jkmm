@@ -1,17 +1,22 @@
-import sqlite3 as sql
-import sys
 import os
+import support as s
+import time
 
 class Database:
+	'''
+	Class is used to access the database
+	
+	tables: list of strings, names of tables in the databas
+	names: list of strings, name of columns for data tables
+	'''
 	#definition of table's and column's names
-	tables = ["Data", "Prediction", "Nodes", "Edges", "Result", "Control"]
-	names = ["carrier", "dep_apt", "arr_apt", 
-			"month", "day", "hour",
-			"sch_dep", "delay" ]
+	tables = ["Data", "Predict", "Nodes", "Edges", "Result", "Control"]
+	names = ["carrier", "fltno", "dep_apt", "arr_apt", 
+			"month", "day", "hour", "sch_dep", "delay" ]
 
 	def __init__(self, fileName, force):
 		'''
-		Function initialize Database class
+		Function initialize Database class and creates empty tables.
 
 		fileName: string, path to the database file
 		force: bool, if you want to write DB with no prompt set true
@@ -41,14 +46,23 @@ class Database:
 					cur.execute(query)
 					continue
 				#init data tables
-				#CONTINUE HERE - if is not working
-				if str(table) in ['Data', 'Prediction']:
+				if str(table) in ['Data']:
 					for name in self.names:
 						query += name
-						if name != "delay":
-							query += " TEXT, "
+						if name == "delay":
+							query += " INT)"							
 						else:
-							query += " INT)"
+							query += " TEXT, "
+					cur.execute(query)
+					continue
+				#init data tables
+				if str(table) in ['Predict']:
+					for name in self.names[:-1]:
+						query += name
+						if name == self.names[-2]:
+							query += " TEXT)"
+						else:
+							query += " TEXT, "
 					cur.execute(query)
 					continue
 				#init output tables
@@ -58,10 +72,10 @@ class Database:
 						continue
 					for name in self.names:
 						query += name
-						if name != "delay":
-							query += " TEXT, "
-						else:
+						if name == "delay":
 							query += " INT)"
+						else:
+							query += " TEXT, "
 					cur.execute(query)
 					continue
 				else:
@@ -70,7 +84,7 @@ class Database:
 					return(-1)
 		return(None)
 
-	def loadcsv(table, fileName):
+	def loadcsv(self, table, fileName):
 		'''
 		Function loads csv file with flight data to the selected
 		table. It is used to load data for learning and for
@@ -81,30 +95,77 @@ class Database:
 		'''
 
 		#write only to defined tables
-		if not table in tables[:2]:
+		if not table in ['Data', 'Predict']:
 			#TODO use infomsg
 			print("ERR " + table + "is not valid for csv loading")
 			return(-1)
 		#open file with data
 		dataFile = open(fileName, "r")
 		totalLines = int(os.stat(fileName).st_size / 66)
-		con = lite.connect(self.dbName)
+		con = sql.connect(self.dbName)
 		#writing the database
 		with con:
 			cur = con.cursor()
-			#clean the table
-			cur.execute("DELETE * FROM " + table)
 
+			#clean the tablequery
+
+			cur.execute("DELETE FROM " + table)
+			#read the first line of csv file
+			line = dataFile.readline()
+			element = line.split(",")
+			if element[0] == "carrier":
+				line = dataFile.readline()
+				element = line.split(",")
+			else:
+				#TODO use infomsg for error
+				print("ERR")
+				return(1)
+			#iterate through lines
+			fault = 0
+			while (line != ""):
+				#container for data writing
+				data = []
+				#skip lines with missing actual_departure
+				if element[-1][:-1] == "":
+					fault += 1
+				else:
+					delay = 0
+					#if loading csv dataset without trailing coma
+					if element[-1] == "":
+						element.pop(-1)
+					#wrong length of element
+					if len(element) < 5 or len(element) > 7:
+						#TODO use infomsg
+						print("ERR")
+						return(-1)
+					#Predict dataset
+					if len(element) == 6:
+						element[5] = element[5][:-1]
+					#Learn dataset				
+					else:
+						delay = s.calcDelay(element[5], element[6][:-1])
+					#split time to more relevant chunks
+					t = time.strptime(str(element[5]), "%Y-%m-%d %H:%M:%S" )
+					month = t[1]
+					wday = t[6] #weekday
+					hour = int(t[3]/6) #hour range 0-6, 6-12, 12-18, 18-24
+					#create data tuple
+					data = [element[0], element[1],	element[2], element[3],
+							str(month), str(wday), str(hour), element[5]]
+					#write to Predict table - delay is not needed
+					if table == "Predict":
+						cur.execute("INSERT INTO " + table + " VALUES" +
+									"(?, ?, ?, ?, ?, ?, ?, ?)", data)
+					#write to Learn table including delay
+					else:
+						data.append(delay)
+						cur.execute("INSERT INTO " + table + " VALUES" +
+									"(?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+				#next line
+				line = dataFile.readline()
+				element = line.split(",")
 			#closing
 			con.commit()
-			con.close()
+		con.close()
 		dataFile.close()
-		return(0)
-
-	def printtable(table):
-		'''
-		function prints selected table to the stdout
-
-		table: string, name of the table
-		'''
 		return(0)

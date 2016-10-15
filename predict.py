@@ -1,5 +1,8 @@
 import database as db
 
-s = db.Database("pokus", False)
+x = db.Database("data/100_learn.db", False)
 
-print(s.dbName)
+print('\033[91m' + x.dbName)
+
+x.loadcsv('Data', 'data/100_learn.csv')
+
